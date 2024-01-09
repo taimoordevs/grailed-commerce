@@ -29,7 +29,7 @@ app.use(
 app.use(ErrorMiddleware);
 // Import User Routes
 app.use("/api", router);
-app.get("/test",(req,res)=>res.send("server running"))
+app.get("/test",(req,res)=>res.send("server running 2"))
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
