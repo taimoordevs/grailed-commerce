@@ -60,15 +60,14 @@ export const login = catchAsyncError(async (req, res) => {
 });
 
 export const getAllCategories = catchAsyncError(async (req, res) => {
-  const categories = await Category.find();
+  const categories = await Category.find().populate("departmentID").lean();
   res.status(200).json(categories);
 });
 
 export const createCategory = catchAsyncError(async (req, res) => {
   const { name, image, departmentID } = req.body;
-
   // Check if the department exists
-  const existingDepartment = await Department.findOne({ departmentID });
+  const existingDepartment = await Department.findById(departmentID);
   if (!existingDepartment) {
     return res.status(400).json({ message: "Department not found" });
   }
@@ -79,15 +78,22 @@ export const createCategory = catchAsyncError(async (req, res) => {
     return res.status(400).json({ message: "Category already exists" });
   }
 
-  // Create a new category
-  const newCategory = new Category({ name, image, departmentID });
+  // Create a new category with the actual department ID
+  const newCategory = new Category({
+    name,
+    image,
+    departmentID,
+  });
   await newCategory.save();
 
   res.status(201).json({ message: "Category created successfully" });
 });
 
 export const getAllSubcategories = catchAsyncError(async (req, res) => {
-  const subcategories = await Subcategory.find().populate("categoryID").lean();
+  const subcategories = await Subcategory.find()
+    .populate("categoryID")
+    .populate("departmentID")
+    .lean();
   res.status(200).json(subcategories);
 });
 
@@ -114,22 +120,46 @@ export const createSubcategory = catchAsyncError(async (req, res) => {
 
 export const getSingleCategoryWithSubcategories = catchAsyncError(
   async (req, res) => {
-    const { categoryID } = req.params;
+    try {
+      const { categoryID } = req.params;
 
-    // Find the category by categoryID
-    const category = await Category.findById(categoryID).lean();
+      // Find the category by categoryID and populate the 'department' field
+      const category = await Category.findById(categoryID)
+        .populate("departmentID")
+        .lean();
 
-    if (!category) {
-      return res.status(404).json({ message: "Category not found" });
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+
+      // Fetch subcategories for the category and populate the 'department' field
+      const subcategories = await Subcategory.find({ categoryID })
+        .populate({
+          path: "departmentID",
+          model: "Department",
+        })
+        .lean();
+
+      // Populate products for each subcategory and populate createdBy field
+      for (const subcategory of subcategories) {
+        subcategory.products = await Product.find({
+          subcategoryID: subcategory._id,
+        })
+          .populate({
+            path: "createdBy",
+            model: "User", // Adjust the model name based on your user model
+            // select: "username email", // Specify the fields you want to retrieve
+          })
+          .lean();
+      }
+      // Add subcategories to the category object
+      const categoryWithSubcategories = { ...category, subcategories };
+
+      res.status(200).json(categoryWithSubcategories);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Internal Server Error" });
     }
-
-    // Fetch subcategories for the category
-    const subcategories = await Subcategory.find({ categoryID }).lean();
-
-    // Add subcategories to the category object
-    const categoryWithSubcategories = { ...category, subcategories };
-
-    res.status(200).json(categoryWithSubcategories);
   }
 );
 
@@ -141,15 +171,20 @@ export const getAllDepartments = catchAsyncError(async (req, res) => {
 export const getSingleDepartment = catchAsyncError(async (req, res) => {
   const { departmentID } = req.params;
 
-  // Find the department by departmentID
-  const department = await Department.findOne({ departmentID }).lean();
-  console.log(department);
+  // Find the department by _id
+  const department = await Department.findById(departmentID).lean();
+
   if (!department) {
     return res.status(404).json({ message: "Department not found" });
   }
 
-  // Fetch categories for the department
-  const categories = await Category.find({ departmentID }).lean();
+  // Convert department._id to a string
+  const departmentIdString = department._id.toString();
+  console.log(departmentIdString);
+  // Fetch categories for the department using populate
+  const categories = await Category.find({ departmentID: departmentIdString })
+    .populate("departmentID")
+    .lean();
 
   // Add categories to the department object
   const departmentWithCategories = { ...department, categories };
@@ -158,33 +193,35 @@ export const getSingleDepartment = catchAsyncError(async (req, res) => {
 });
 
 export const createDepartment = catchAsyncError(async (req, res) => {
-  const { name, image, departmentID } = req.body;
+  const { name, image } = req.body;
 
   // Check if the department already exists
   const existingDepartment = await Department.findOne({
-    $or: [{ name }, { departmentID }],
+    $or: [{ name }],
   });
   if (existingDepartment) {
     return res.status(400).json({ message: "Department already exists" });
   }
 
   // Create a new department
-  const newDepartment = new Department({ name, image, departmentID });
+  const newDepartment = new Department({ name, image });
   await newDepartment.save();
 
   res.status(201).json({ message: "Department created successfully" });
 });
 
 export const getAllProducts = catchAsyncError(async (req, res) => {
-  const products = await Product.find().lean();
+  const products = await Product.find().populate("createdBy").lean();
   res.status(200).json(products);
 });
 
 export const getSingleProduct = catchAsyncError(async (req, res) => {
   const { productID } = req.params;
 
-  // Find the product by productID
-  const product = await Product.findById(productID).lean();
+  // Find the product by productID and populate the 'createdBy' field
+  const product = await Product.findById(productID)
+    .populate("createdBy")
+    .lean();
 
   if (!product) {
     return res.status(404).json({ message: "Product not found" });
@@ -209,33 +246,55 @@ export const createProduct = catchAsyncError(async (req, res) => {
     // Add other product-related fields as needed
   } = req.body;
 
-  // Create a new product
-  const newProduct = new Product({
-    departmentID,
-    categoryID,
-    subcategoryID,
-    name,
-    images,
-    price,
-    size,
-    color,
-    condition,
-    description,
-    tags,
-    // Add other product-related fields as needed
-  });
+  // Get the user ID from request parameters
+  const createdBy = req.body.userID; // Replace with your actual parameter name
 
-  await newProduct.save();
+  try {
+    // Fetch the user who created the product
+    const user = await User.findById(createdBy);
 
-  res.status(201).json({ message: "Product created successfully" });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Create a new product
+    const newProduct = new Product({
+      departmentID,
+      categoryID,
+      subcategoryID,
+      name,
+      images,
+      price,
+      size,
+      color,
+      condition,
+      description,
+      tags,
+      createdBy: {
+        _id: user._id,
+        name: user.name,
+        // Add other user details as needed
+      },
+      // Add other product-related fields as needed
+    });
+
+    await newProduct.save();
+
+    res.status(201).json({ message: "Product created successfully" });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
 });
 
 export const getSingleSubcategoryWithProducts = catchAsyncError(
   async (req, res) => {
     const { subcategoryID } = req.params;
 
-    // Find the subcategory by subcategoryID
-    const subcategory = await Subcategory.findById(subcategoryID).lean();
+    // Find the subcategory by subcategoryID and populate 'departmentID' and 'categoryID'
+    const subcategory = await Subcategory.findById(subcategoryID)
+      .populate("departmentID")
+      .populate("categoryID")
+      .lean();
 
     if (!subcategory) {
       return res.status(404).json({ message: "Subcategory not found" });
@@ -251,7 +310,7 @@ export const getSingleSubcategoryWithProducts = catchAsyncError(
   }
 );
 
-export const likeProduct = catchAsyncError(async (req, res) => {
+export const toggleLikeDislike = catchAsyncError(async (req, res) => {
   const { productID, userID } = req.params;
 
   // Find the product by productID
@@ -262,45 +321,72 @@ export const likeProduct = catchAsyncError(async (req, res) => {
   }
 
   // Check if the user has already liked the product
-  if (!product.likes.includes(userID)) {
-    // Add the user to the likes array
+  const likedIndex = product.likes.findIndex((userId) => userId === userID);
+
+  // Toggle between liking and disliking based on the current state
+  if (likedIndex === -1) {
+    // If the user hasn't liked the product, add their ID to the likes array
     product.likes.push(userID);
     await product.save();
     res.status(200).json({ message: "Product liked successfully" });
   } else {
-    res.status(400).json({ message: "User already liked the product" });
-  }
-});
-
-export const dislikeProduct = catchAsyncError(async (req, res) => {
-  const { productID, userID } = req.params;
-
-  // Find the product by productID
-  const product = await Product.findById(productID);
-
-  if (!product) {
-    return res.status(404).json({ message: "Product not found" });
-  }
-
-  // Check if the user has already liked the product
-  if (!product.likes.includes(userID)) {
-    return res
-      .status(400)
-      .json({ message: "Cannot dislike a product that has not been liked" });
-  }
-
-  // Check if the user has already disliked the product
-  if (!product.dislikes.includes(userID)) {
-    // Add the user to the dislikes array
-    product.dislikes.push(userID);
+    // If the user has liked the product, remove their ID from the likes array
+    product.likes.splice(likedIndex, 1);
     await product.save();
-    return res.status(200).json({ message: "Product disliked successfully" });
-  } else {
-    return res
-      .status(400)
-      .json({ message: "User already disliked the product" });
+    res.status(200).json({ message: "Product like removed successfully" });
   }
 });
+
+// export const likeProduct = catchAsyncError(async (req, res) => {
+//   const { productID, userID } = req.params;
+
+//   // Find the product by productID
+//   const product = await Product.findById(productID);
+
+//   if (!product) {
+//     return res.status(404).json({ message: "Product not found" });
+//   }
+
+//   // Check if the user has already liked the product
+//   if (!product.likes.includes(userID)) {
+//     // Add the user to the likes array
+//     product.likes.push(userID);
+//     await product.save();
+//     res.status(200).json({ message: "Product liked successfully" });
+//   } else {
+//     res.status(400).json({ message: "User already liked the product" });
+//   }
+// });
+
+// export const dislikeProduct = catchAsyncError(async (req, res) => {
+//   const { productID, userID } = req.params;
+
+//   // Find the product by productID
+//   const product = await Product.findById(productID);
+
+//   if (!product) {
+//     return res.status(404).json({ message: "Product not found" });
+//   }
+
+//   // Check if the user has already liked the product
+//   if (!product.likes.includes(userID)) {
+//     return res
+//       .status(400)
+//       .json({ message: "Cannot dislike a product that has not been liked" });
+//   }
+
+//   // Check if the user has already disliked the product
+//   if (!product.dislikes.includes(userID)) {
+//     // Add the user to the dislikes array
+//     product.dislikes.push(userID);
+//     await product.save();
+//     return res.status(200).json({ message: "Product disliked successfully" });
+//   } else {
+//     return res
+//       .status(400)
+//       .json({ message: "User already disliked the product" });
+//   }
+// });
 
 export const updateProfile = catchAsyncError(async (req, res) => {
   const { userID } = req.params;
@@ -327,3 +413,32 @@ export const updateProfile = catchAsyncError(async (req, res) => {
 
   res.status(200).json({ message: "User profile updated successfully" });
 });
+
+export const uploadImage = async (req, res, next) => {
+  let images = [];
+  if (req.files && req.files.avatars) {
+    if (!Array.isArray(req.files.avatars)) {
+      images.push(req.files.avatars);
+    } else {
+      images = req.files.avatars;
+    }
+  }
+  let responce = [];
+  for (const image of images) {
+    try {
+      const result = await cloudinary.v2.uploader.upload(image.tempFilePath);
+      const publidId = result.public_id;
+      const url = result.url;
+      let data = {
+        publidId,
+        url,
+      };
+      //  console.log(data);
+      responce.push(data);
+    } catch (error) {
+      console.log(error);
+      return res.status(500).json({ error: "Error uploading images" });
+    }
+  }
+  res.send(responce);
+};
