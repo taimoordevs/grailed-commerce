@@ -337,57 +337,6 @@ export const toggleLikeDislike = catchAsyncError(async (req, res) => {
   }
 });
 
-// export const likeProduct = catchAsyncError(async (req, res) => {
-//   const { productID, userID } = req.params;
-
-//   // Find the product by productID
-//   const product = await Product.findById(productID);
-
-//   if (!product) {
-//     return res.status(404).json({ message: "Product not found" });
-//   }
-
-//   // Check if the user has already liked the product
-//   if (!product.likes.includes(userID)) {
-//     // Add the user to the likes array
-//     product.likes.push(userID);
-//     await product.save();
-//     res.status(200).json({ message: "Product liked successfully" });
-//   } else {
-//     res.status(400).json({ message: "User already liked the product" });
-//   }
-// });
-
-// export const dislikeProduct = catchAsyncError(async (req, res) => {
-//   const { productID, userID } = req.params;
-
-//   // Find the product by productID
-//   const product = await Product.findById(productID);
-
-//   if (!product) {
-//     return res.status(404).json({ message: "Product not found" });
-//   }
-
-//   // Check if the user has already liked the product
-//   if (!product.likes.includes(userID)) {
-//     return res
-//       .status(400)
-//       .json({ message: "Cannot dislike a product that has not been liked" });
-//   }
-
-//   // Check if the user has already disliked the product
-//   if (!product.dislikes.includes(userID)) {
-//     // Add the user to the dislikes array
-//     product.dislikes.push(userID);
-//     await product.save();
-//     return res.status(200).json({ message: "Product disliked successfully" });
-//   } else {
-//     return res
-//       .status(400)
-//       .json({ message: "User already disliked the product" });
-//   }
-// });
-
 export const updateProfile = catchAsyncError(async (req, res) => {
   const { userID } = req.params;
 
@@ -414,7 +363,7 @@ export const updateProfile = catchAsyncError(async (req, res) => {
   res.status(200).json({ message: "User profile updated successfully" });
 });
 
-export const uploadImage = async (req, res, next) => {
+export const uploadImage = catchAsyncError(async (req, res) => {
   let images = [];
   if (req.files && req.files.avatars) {
     if (!Array.isArray(req.files.avatars)) {
@@ -441,4 +390,33 @@ export const uploadImage = async (req, res, next) => {
     }
   }
   res.send(responce);
-};
+});
+
+// export const uploadImage = async (req, res, next) => {
+//   let images = [];
+//   if (req.files && req.files.avatars) {
+//     if (!Array.isArray(req.files.avatars)) {
+//       images.push(req.files.avatars);
+//     } else {
+//       images = req.files.avatars;
+//     }
+//   }
+//   let responce = [];
+//   for (const image of images) {
+//     try {
+//       const result = await cloudinary.v2.uploader.upload(image.tempFilePath);
+//       const publidId = result.public_id;
+//       const url = result.url;
+//       let data = {
+//         publidId,
+//         url,
+//       };
+//       //  console.log(data);
+//       responce.push(data);
+//     } catch (error) {
+//       console.log(error);
+//       return res.status(500).json({ error: "Error uploading images" });
+//     }
+//   }
+//   res.send(responce);
+// };
