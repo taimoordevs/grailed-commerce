@@ -262,21 +262,21 @@ export const createProduct = catchAsyncError(async (req, res) => {
     subcategoryID,
     name,
     images,
-    price,
+    regularPrice,
+    salePrice, // Add sale price to the request body
+    discount, // Add discount to the request body
     size,
     color,
     condition,
     description,
     tags,
+    userID, // Change to userID for consistency
     // Add other product-related fields as needed
   } = req.body;
 
-  // Get the user ID from request parameters
-  const createdBy = req.body.userID; // Replace with your actual parameter name
-
   try {
     // Fetch the user who created the product
-    const user = await User.findById(createdBy);
+    const user = await User.findById(userID);
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -289,7 +289,9 @@ export const createProduct = catchAsyncError(async (req, res) => {
       subcategoryID,
       name,
       images,
-      price,
+      regularPrice,
+      salePrice,
+      discount,
       size,
       color,
       condition,
@@ -305,7 +307,9 @@ export const createProduct = catchAsyncError(async (req, res) => {
 
     await newProduct.save();
 
-    res.status(201).json({ message: "Product created successfully" });
+    res
+      .status(201)
+      .json({ message: "Product created successfully", newProduct });
   } catch (error) {
     return res.status(500).json({ message: "Internal Server Error" });
   }
@@ -337,28 +341,36 @@ export const getSingleSubcategoryWithProducts = catchAsyncError(
 
 export const toggleLikeDislike = catchAsyncError(async (req, res) => {
   const { productID, userID } = req.params;
+  // console.log(productID);
+  // console.log(userID);
+  try {
+    // Find the product by productID
+    const product = await Product.findById(productID);
+    // console.log(product);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
 
-  // Find the product by productID
-  const product = await Product.findById(productID);
+    // Check if the user has already liked the product
+    const likedIndex = product.likes.indexOf(userID);
 
-  if (!product) {
-    return res.status(404).json({ message: "Product not found" });
-  }
+    // Toggle between liking and disliking based on the current state
+    if (likedIndex === -1) {
+      // If the user hasn't liked the product, add their ID to the likes array
+      product.likes.push(userID);
+    } else {
+      // If the user has liked the product, remove their ID from the likes array
+      product.likes.splice(likedIndex, 1);
+    }
 
-  // Check if the user has already liked the product
-  const likedIndex = product.likes.findIndex((userId) => userId === userID);
-
-  // Toggle between liking and disliking based on the current state
-  if (likedIndex === -1) {
-    // If the user hasn't liked the product, add their ID to the likes array
-    product.likes.push(userID);
     await product.save();
-    res.status(200).json({ message: "Product liked successfully" });
-  } else {
-    // If the user has liked the product, remove their ID from the likes array
-    product.likes.splice(likedIndex, 1);
-    await product.save();
-    res.status(200).json({ message: "Product like removed successfully" });
+    res.status(200).json({
+      message: "Like status toggled successfully",
+      liked: likedIndex === -1,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
