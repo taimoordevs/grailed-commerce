@@ -164,8 +164,33 @@ export const getSingleCategoryWithSubcategories = catchAsyncError(
 );
 
 export const getAllDepartments = catchAsyncError(async (req, res) => {
-  const departments = await Department.find();
-  res.status(200).json(departments);
+  try {
+    const departments = await Department.find().lean();
+
+    const departmentsWithCategories = await Promise.all(
+      departments.map(async (department) => {
+        const categories = await Category.find({
+          departmentID: department._id,
+        }).lean();
+
+        const categoriesWithSubcategories = await Promise.all(
+          categories.map(async (category) => {
+            const subcategories = await Subcategory.find({
+              categoryID: category._id,
+            }).lean();
+            return { ...category, subcategories };
+          })
+        );
+
+        return { ...department, categories: categoriesWithSubcategories };
+      })
+    );
+
+    res.status(200).json(departmentsWithCategories);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 });
 
 export const getSingleDepartment = catchAsyncError(async (req, res) => {
@@ -391,32 +416,3 @@ export const uploadImage = catchAsyncError(async (req, res) => {
   }
   res.send(responce);
 });
-
-// export const uploadImage = async (req, res, next) => {
-//   let images = [];
-//   if (req.files && req.files.avatars) {
-//     if (!Array.isArray(req.files.avatars)) {
-//       images.push(req.files.avatars);
-//     } else {
-//       images = req.files.avatars;
-//     }
-//   }
-//   let responce = [];
-//   for (const image of images) {
-//     try {
-//       const result = await cloudinary.v2.uploader.upload(image.tempFilePath);
-//       const publidId = result.public_id;
-//       const url = result.url;
-//       let data = {
-//         publidId,
-//         url,
-//       };
-//       //  console.log(data);
-//       responce.push(data);
-//     } catch (error) {
-//       console.log(error);
-//       return res.status(500).json({ error: "Error uploading images" });
-//     }
-//   }
-//   res.send(responce);
-// };
