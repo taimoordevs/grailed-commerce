@@ -391,8 +391,9 @@ export const updateProfile = catchAsyncError(async (req, res) => {
   user.city = req.body.city || user.city;
   user.state = req.body.state || user.state;
   user.country = req.body.country || user.country;
-  user.profileImage = req.body.profileImage || user.profileImage;
+  user.profile_image = req.body.profile_image || user.profile_image;
   user.zipCode = req.body.zipCode || user.zipCode;
+  user.bio = req.body.bio || user.bio;
 
   // Save the updated user profile
   await user.save();
@@ -428,3 +429,43 @@ export const uploadImage = catchAsyncError(async (req, res) => {
   }
   res.send(responce);
 });
+
+export const addAddress = catchAsyncError(async (req, res) => {
+  const { userId, newAddress } = req.body;
+  // console.log(userId, newAddress);
+  try {
+    const user = await User.findById(userId);
+    // console.log(user);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.addresses.push(newAddress);
+    await user.save();
+
+    res.status(200).json({ message: 'Address added successfully', user });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+export const getAddress = catchAsyncError(async (req, res) => {
+
+  const userId = req.params.userId;
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const addresses = user.addresses;
+    res.status(200).json({ addresses });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+
+})

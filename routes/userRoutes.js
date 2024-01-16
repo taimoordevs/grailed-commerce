@@ -14,11 +14,11 @@ import {
   getAllProducts,
   getSingleProduct,
   getSingleSubcategoryWithProducts,
-  // likeProduct,
-  // dislikeProduct,
   updateProfile,
   uploadImage,
   toggleLikeDislike,
+  addAddress,
+  getAddress,
 } from "../controller/userController.js";
 import multer from "multer";
 const upload = multer({ dest: "uploads/" });
@@ -47,5 +47,9 @@ router.route("/getSingleProduct/:productID").post(getSingleProduct);
 router
   .route("/getSingleSubCategories/:subcategoryID")
   .post(getSingleSubcategoryWithProducts);
+router.route("/addAddress").post(addAddress);
+router.route("/getAddress/:userId").post(getAddress);
+
+
 
 export default router;
