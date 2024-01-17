@@ -22,6 +22,9 @@ import {
   createStore,
   addProductToStore,
   getAllProductsInStore,
+  createBrand,
+  getSingleBrand,
+  getAllBrands,
 } from "../controller/userController.js";
 import multer from "multer";
 const upload = multer({ dest: "uploads/" });
@@ -44,18 +47,21 @@ router
   .post(getSingleCategoryWithSubcategories);
 router.route("/createProduct").post(createProduct);
 router.route("/getAllProducts").post(getAllProducts);
+router.route("/getAllBrands").post(getAllBrands);
 router.route("/toggleLikeDislike/:productID/:userID").post(toggleLikeDislike);
 // router.route("/products/:productID/dislike/:userID").post(dislikeProduct);
 router.route("/getSingleProduct/:productID").post(getSingleProduct);
 router
   .route("/getSingleSubCategories/:subcategoryID")
   .post(getSingleSubcategoryWithProducts);
-router.route("/addAddress").post(addAddress);
-router.route("/getAddress/:userId").post(getAddress);
-router.route("/createStore/:userId").post(createStore);
 router.route("/addProductToStore/:userId/:storeId").post(addProductToStore);
 router
   .route("/getAllProductsInStore/:userId/:storeId")
   .post(getAllProductsInStore);
+router.route("/addAddress").post(addAddress);
+router.route("/getAddress/:userId").post(getAddress);
+router.route("/createStore/:userId").post(createStore);
+router.route("/createBrand").post(createBrand);
+router.route("/getSingleBrand/:brandId").post(getSingleBrand);
 
 export default router;

@@ -7,6 +7,7 @@ import multer from "multer";
 import Subcategory from "../model/Sub_Category.js";
 import Product from "../model/Product.js";
 import Store from "../model/Store.js";
+import Brand from "../model/Brand.js";
 const upload = multer({ dest: "uploads/" });
 
 export const uploadVideos = upload.single("video");
@@ -247,7 +248,7 @@ export const getSingleProduct = catchAsyncError(async (req, res) => {
   try {
     // Find the product by productID and populate the 'createdBy' field
     const product = await Product.findById(productID)
-      .populate("departmentID categoryID subcategoryID createdBy")
+      .populate("departmentID categoryID subcategoryID createdBy brandID")
       .lean();
 
     if (!product) {
@@ -275,6 +276,7 @@ export const createProduct = catchAsyncError(async (req, res) => {
     color,
     condition,
     description,
+    brandID,
     tags,
     userID, // Change to userID for consistency
     // Add other product-related fields as needed
@@ -286,6 +288,34 @@ export const createProduct = catchAsyncError(async (req, res) => {
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    // Fetch the user who created the product
+    const departmentC = await Department.findById(departmentID);
+
+    if (!departmentC) {
+      return res.status(404).json({ message: "Department not found" });
+    }
+
+    // Fetch the user who created the product
+    const categoryC = await Category.findById(categoryID);
+
+    if (!categoryC) {
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    // Fetch the user who created the product
+    const subcategoriesC = await Subcategory.findById(subcategoryID);
+
+    if (!subcategoriesC) {
+      return res.status(404).json({ message: "Sub Categories not found" });
+    }
+
+    // Fetch the user who created the product
+    const brandC = await Brand.findById(brandID);
+
+    if (!brandC) {
+      return res.status(404).json({ message: "Brand not found" });
     }
 
     // Create a new product
@@ -303,6 +333,7 @@ export const createProduct = catchAsyncError(async (req, res) => {
       condition,
       description,
       tags,
+      brandID,
       createdBy: {
         _id: user._id,
         name: user.name,
@@ -311,8 +342,11 @@ export const createProduct = catchAsyncError(async (req, res) => {
       // Add other product-related fields as needed
     });
 
-    await newProduct.save();
+    // Update the brand document with the new product
+    brandC.products.push(newProduct._id);
+    await brandC.save();
 
+    await newProduct.save();
     res
       .status(201)
       .json({ message: "Product created successfully", newProduct });
@@ -634,4 +668,53 @@ export const getAllProductsInStore = catchAsyncError(async (req, res) => {
     console.error(error);
     res.status(500).json({ message: "Internal Server Error" });
   }
+});
+
+export const createBrand = catchAsyncError(async (req, res) => {
+  const { name, logo, image, description } = req.body;
+
+  // Check if a brand with the same name already exists
+  const existingBrand = await Brand.findOne({ name });
+
+  if (existingBrand) {
+    return res.status(400).json({ message: "Brand name is already taken" });
+  }
+
+  // Create a new brand
+  const newBrand = new Brand({
+    name,
+    logo,
+    image,
+    description,
+  });
+
+  await newBrand.save();
+
+  res
+    .status(201)
+    .json({ message: "Brand created successfully", brand: newBrand });
+});
+
+export const getSingleBrand = catchAsyncError(async (req, res) => {
+  const { brandId } = req.params;
+
+  try {
+    // Find the brand by ID and populate the 'products' field
+    const brand = await Brand.findById(brandId).populate("products").lean();
+
+    if (!brand) {
+      return res.status(404).json({ message: "Brand not found" });
+    }
+
+    res.status(200).json(brand);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+export const getAllBrands = catchAsyncError(async (req, res) => {
+  const brands = await Brand.find();
+
+  res.status(200).json({ brands });
 });
