@@ -6,6 +6,7 @@ import cloudinary from "cloudinary";
 import multer from "multer";
 import Subcategory from "../model/Sub_Category.js";
 import Product from "../model/Product.js";
+import Store from "../model/Store.js";
 const upload = multer({ dest: "uploads/" });
 
 export const uploadVideos = upload.single("video");
@@ -243,16 +244,21 @@ export const getAllProducts = catchAsyncError(async (req, res) => {
 export const getSingleProduct = catchAsyncError(async (req, res) => {
   const { productID } = req.params;
 
-  // Find the product by productID and populate the 'createdBy' field
-  const product = await Product.findById(productID)
-    .populate("createdBy")
-    .lean();
+  try {
+    // Find the product by productID and populate the 'createdBy' field
+    const product = await Product.findById(productID)
+      .populate("departmentID categoryID subcategoryID createdBy")
+      .lean();
 
-  if (!product) {
-    return res.status(404).json({ message: "Product not found" });
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.status(200).json(product);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
-
-  res.status(200).json(product);
 });
 
 export const createProduct = catchAsyncError(async (req, res) => {
@@ -437,35 +443,195 @@ export const addAddress = catchAsyncError(async (req, res) => {
     const user = await User.findById(userId);
     // console.log(user);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     user.addresses.push(newAddress);
     await user.save();
 
-    res.status(200).json({ message: 'Address added successfully', user });
+    res.status(200).json({ message: "Address added successfully", user });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
 export const getAddress = catchAsyncError(async (req, res) => {
-
   const userId = req.params.userId;
 
   try {
     const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     const addresses = user.addresses;
     res.status(200).json({ addresses });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    res.status(500).json({ message: "Internal Server Error" });
   }
+});
 
-})
+const createNewStore = async (
+  userId,
+  storeName,
+  storeDescription,
+  storeImage
+) => {
+  const newStore = new Store({
+    name: storeName,
+    description: storeDescription,
+    owner: userId,
+    storeImage: storeImage,
+  });
+
+  await newStore.save();
+
+  // Update the user's store field
+  await User.findByIdAndUpdate(userId, { store: newStore._id });
+
+  return newStore;
+};
+
+export const createStore = catchAsyncError(async (req, res) => {
+  const { userId } = req.params;
+  const { storeName, storeDescription, storeImage } = req.body;
+
+  try {
+    // Check if the user exists
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if the user already has a store
+    if (user.store) {
+      return res.status(400).json({ message: "User already has a store" });
+    }
+
+    // Create a new store for the user
+    const newStore = await createNewStore(
+      userId,
+      storeName,
+      storeDescription,
+      storeImage
+    );
+
+    res.status(201).json({
+      message: "Store created successfully",
+      store: newStore,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+export const addProductToStore = catchAsyncError(async (req, res) => {
+  const {
+    departmentID,
+    categoryID,
+    subcategoryID,
+    name,
+    images,
+    regularPrice,
+    salePrice,
+    discount,
+    size,
+    color,
+    condition,
+    description,
+    tags,
+  } = req.body;
+
+  const createdBy = req.params.userId;
+  const storeId = req.params.storeId; // Assuming you have the store ID
+
+  try {
+    // Check if the user exists
+    const user = await User.findById(createdBy);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if the user has a store
+    if (!user.store) {
+      return res.status(400).json({ message: "User does not have a store" });
+    }
+
+    // Create a new product
+    const newProduct = new Product({
+      departmentID,
+      categoryID,
+      subcategoryID,
+      name,
+      images,
+      regularPrice,
+      salePrice,
+      discount,
+      createdBy,
+      size,
+      color,
+      condition,
+      description,
+      tags,
+    });
+
+    await newProduct.save();
+
+    // Add product to the store
+    const store = await Store.findById(storeId);
+
+    if (!store) {
+      return res.status(404).json({ message: "Store not found" });
+    }
+
+    store.products.push(newProduct._id);
+    await store.save();
+
+    res
+      .status(201)
+      .json({ message: "Product added successfully", product: newProduct });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+export const getAllProductsInStore = catchAsyncError(async (req, res) => {
+  const userId = req.params.userId;
+  const storeId = req.params.storeId;
+
+  try {
+    // Check if the user exists
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Check if the user has a store
+    if (!user.store) {
+      return res.status(400).json({ message: "User does not have a store" });
+    }
+
+    // Check if the store exists
+    const store = await Store.findById(storeId);
+
+    if (!store) {
+      return res.status(404).json({ message: "Store not found" });
+    }
+
+    // Get all products in the store
+    const products = await Product.find({ _id: { $in: store.products } });
+
+    res.status(200).json({ products });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});

@@ -19,6 +19,9 @@ import {
   toggleLikeDislike,
   addAddress,
   getAddress,
+  createStore,
+  addProductToStore,
+  getAllProductsInStore,
 } from "../controller/userController.js";
 import multer from "multer";
 const upload = multer({ dest: "uploads/" });
@@ -49,7 +52,10 @@ router
   .post(getSingleSubcategoryWithProducts);
 router.route("/addAddress").post(addAddress);
 router.route("/getAddress/:userId").post(getAddress);
-
-
+router.route("/createStore/:userId").post(createStore);
+router.route("/addProductToStore/:userId/:storeId").post(addProductToStore);
+router
+  .route("/getAllProductsInStore/:userId/:storeId")
+  .post(getAllProductsInStore);
 
 export default router;

@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema({
-
   departmentID: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Department",

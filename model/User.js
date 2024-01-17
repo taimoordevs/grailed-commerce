@@ -27,8 +27,8 @@ const userSchema = new Schema({
   bio: { type: String }, // Add bio field
   country: { type: String },
   storeName: { type: String },
-  storeDescription: {type : String },
-  storeProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+  storeDescription: { type: String },
+  storeProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
   profile_image: { type: String }, // URL or file path to the department image
   zipCode: { type: String },
   addresses: [
@@ -40,7 +40,10 @@ const userSchema = new Schema({
       zipCode: String,
     },
   ],
-  
+  store: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Store",
+  },
 });
 
 userSchema.methods.getJWTToken = function () {
