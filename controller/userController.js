@@ -716,5 +716,5 @@ export const getSingleBrand = catchAsyncError(async (req, res) => {
 export const getAllBrands = catchAsyncError(async (req, res) => {
   const brands = await Brand.find();
 
-  res.status(200).json({ brands });
+  res.status(200).json({ success: true, brands });
 });
