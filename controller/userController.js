@@ -579,6 +579,7 @@ export const addProductToStore = catchAsyncError(async (req, res) => {
     condition,
     description,
     tags,
+    brandID, // Include brandID in the request body
   } = req.body;
 
   const createdBy = req.params.userId;
@@ -613,6 +614,7 @@ export const addProductToStore = catchAsyncError(async (req, res) => {
       condition,
       description,
       tags,
+      brandID, // Include brandID in the product creation
     });
 
     await newProduct.save();
@@ -635,6 +637,78 @@ export const addProductToStore = catchAsyncError(async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
+// export const addProductToStore = catchAsyncError(async (req, res) => {
+//   const {
+//     departmentID,
+//     categoryID,
+//     subcategoryID,
+//     name,
+//     images,
+//     regularPrice,
+//     salePrice,
+//     discount,
+//     size,
+//     color,
+//     condition,
+//     description,
+//     tags,
+//   } = req.body;
+
+//   const createdBy = req.params.userId;
+//   const storeId = req.params.storeId; // Assuming you have the store ID
+
+//   try {
+//     // Check if the user exists
+//     const user = await User.findById(createdBy);
+
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     // Check if the user has a store
+//     if (!user.store) {
+//       return res.status(400).json({ message: "User does not have a store" });
+//     }
+
+//     // Create a new product
+//     const newProduct = new Product({
+//       departmentID,
+//       categoryID,
+//       subcategoryID,
+//       name,
+//       images,
+//       regularPrice,
+//       salePrice,
+//       discount,
+//       createdBy,
+//       size,
+//       color,
+//       condition,
+//       description,
+//       tags,
+//     });
+
+//     await newProduct.save();
+
+//     // Add product to the store
+//     const store = await Store.findById(storeId);
+
+//     if (!store) {
+//       return res.status(404).json({ message: "Store not found" });
+//     }
+
+//     store.products.push(newProduct._id);
+//     await store.save();
+
+//     res
+//       .status(201)
+//       .json({ message: "Product added successfully", product: newProduct });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// });
 
 export const getAllProductsInStore = catchAsyncError(async (req, res) => {
   const userId = req.params.userId;
@@ -717,4 +791,27 @@ export const getAllBrands = catchAsyncError(async (req, res) => {
   const brands = await Brand.find();
 
   res.status(200).json({ success: true, brands });
+});
+
+export const getSingleUser = catchAsyncError(async (req, res) => {
+  const userId = req.params.userId;
+
+  try {
+    // Fetch the user with their store details
+    const userWithStore = await User.findById(userId).populate({
+      path: "store",
+      populate: {
+        path: "products", // Assuming you want to populate the products within the store
+      },
+    });
+
+    if (!userWithStore) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ user: userWithStore });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 });
