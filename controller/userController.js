@@ -19,10 +19,15 @@ cloudinary.v2.config({
 });
 
 export const register = catchAsyncError(async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, type } = req.body;
 
   // Check if the user already exists
   const existingUser = await User.findOne({ email });
+
+  if (!type) {
+    return res.status(401).json({ success: true, message: "Please Add Type" });
+  }
+
   if (existingUser) {
     return res
       .status(400)
@@ -30,7 +35,7 @@ export const register = catchAsyncError(async (req, res) => {
   }
 
   // Create a new user
-  const newUser = new User({ email, password });
+  const newUser = new User({ email, password, type });
   await newUser.save();
 
   res
@@ -810,6 +815,26 @@ export const getSingleUser = catchAsyncError(async (req, res) => {
     }
 
     res.status(200).json({ user: userWithStore });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+export const getSingleStoreWithDetails = catchAsyncError(async (req, res) => {
+  const storeId = req.params.storeId;
+
+  try {
+    // Fetch the store with its details, including products and owner details
+    const storeWithDetails = await Store.findById(storeId)
+      .populate("owner", "-password") // Exclude password from owner details
+      .populate("products"); // Assuming you want to populate the products within the store
+
+    if (!storeWithDetails) {
+      return res.status(404).json({ message: "Store not found" });
+    }
+
+    res.status(200).json({ store: storeWithDetails });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal Server Error" });

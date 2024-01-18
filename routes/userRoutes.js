@@ -26,6 +26,7 @@ import {
   getSingleBrand,
   getAllBrands,
   getSingleUser,
+  getSingleStoreWithDetails,
 } from "../controller/userController.js";
 import multer from "multer";
 const upload = multer({ dest: "uploads/" });
@@ -65,5 +66,6 @@ router.route("/createStore/:userId").post(createStore);
 router.route("/createBrand").post(createBrand);
 router.route("/getSingleBrand/:brandId").post(getSingleBrand);
 router.route("/getSingleUser/:userId").post(getSingleUser);
+router.route("/getSingleStore/:storeId").post(getSingleStoreWithDetails);
 
 export default router;
