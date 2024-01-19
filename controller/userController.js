@@ -243,7 +243,9 @@ export const createDepartment = catchAsyncError(async (req, res) => {
 });
 
 export const getAllProducts = catchAsyncError(async (req, res) => {
-  const products = await Product.find().populate("createdBy").lean();
+  const products = await Product.find()
+    .populate("departmentID categoryID subcategoryID createdBy brandID")
+    .lean();
   res.status(200).json(products);
 });
 
