@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ProductSlider.css */
+
+.scroll-container {
+    /* display: flex; */
+    overflow-x: auto;
+    white-space: nowrap;
+    transition: transform 0.2s ease-in-out; 
+    scroll-behavior: smooth;
+  }
+  
+  .scroll-item {
+    margin-right: 20px; 
+    transition: transform 0.3s ease-in-out; 
+  }
+  
+
+  .h1{
+    @apply text-black  font-normal text-5xl
+  }
+
+  .h2{
+    @apply text-black   font-bold text-4xl
+  }
+   
+  .h3{
+    @apply text-black  font-bold text-2xl
+  }
+  .h4{
+    @apply text-black font-bold text-xl
+  }
+ 
+  .h5{
+    @apply text-black font-bold  text-lg
+  } 
+  .h6{
+    @apply text-black font-bold   text-sm
+  }
+
+
+  .swiper-pagination{
+   position: unset !important;
+  }
+
+  .swiper-pagination-bullet-active{
+    background: #000 !important;
+  }
